@@ -34,14 +34,14 @@ So far, has implemented the following instructions:
 3. `blt`     
 4. `bge`     
 5. `bltu`    
-6. `bgeu`    
+6. `bgeu`   
+7. `jalr`    
+8. `jal`   
 
 
 ### Remaining:
 
-`jalr`    
-
-`jal`     
+   
 
 `auipc`   
 

@@ -198,7 +198,7 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
         case 5:
         //bge
         printf("Instruction bge: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
-        pc++;
+        
         if (registers[rs1] > registers[rs2])
           {pc = pc +(imm/2);}
         else {pc ++;}
@@ -227,11 +227,28 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
       }
       
       break;
+    case 0x6f:
+      switch(funct3)
+      case 0:
+        jalr_type_extract(instruc, &rs1, &rd, &funct3, &imm);
+        printf("Instruction jalr: rs1:%u rd: %u imm:%d\n\n", rs1,rd,imm);
+        registers[rd] = pc +1;
+        pc = (registers[rs1] + imm)/4;
+        break;
+    case 0x67:
+
+      jal_type_extract(instruc,&rd,&imm);
+      printf("Instruction jal: rd: %u imm:%d\n\n", rd,imm);
+      registers[rd] = pc +1;
+      pc = pc + (imm/2);
+      break;
+
 
     default:
       printf("Unknown instruction with opcode: %u\n", opcode);
       pc++;
   }
+
 
   return pc;
 }

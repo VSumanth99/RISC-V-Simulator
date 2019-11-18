@@ -9,7 +9,8 @@ void i_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3
 void u_type_extract(uint32_t instruc, uint8_t* rd, int32_t *imm);
 void b_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* funct3, int32_t*imm);
 int32_t sign_extend(int32_t num, int bits);
-
+void jalr_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t* imm);
+void jal_type_extract(uint32_t instruc,uint8_t* rd,int32_t* imm);
 
 
 #endif
