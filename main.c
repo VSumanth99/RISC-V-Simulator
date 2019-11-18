@@ -48,9 +48,10 @@ int main(int argc, char const *argv[])
     for (int i = 0; i < 32; i++)
       registers[i] = 0;
     for (; ; )
-    {
+    {		printf("%d\n",pc );
 			uint32_t instr = instructions[pc];
 			pc = process_instruction(instr, registers, NULL, pc);
+
       //test for program end
       if(pc > n_instructions)
         break;

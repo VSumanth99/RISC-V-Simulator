@@ -1,4 +1,17 @@
 #include "instruc_exec.h"
+#include "instruc_utils.h"
+
+
+uint32_t unsignedbintodec(int32_t n)
+{ uint8_t count = 0;
+  uint32_t num = 0;
+
+  while(count<32)
+    { num = num + 2*(n&0x01);
+       n>>1;
+       count ++; }
+  return num;
+}
 
 
 uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram, uint32_t pc)
@@ -142,10 +155,83 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
       registers[rd] = imm << 12;
       pc++;
       break;
+    case 0x63: ;
+      b_type_extract(instruc, &rs1, &rs2, &funct3, &imm);
+      switch(funct3)
+      {
+        case 0:
+        //beq
+        printf("Instruction beq: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        if (registers[rs1] == registers[rs2])
+        {
+                    pc = pc + (imm/2);  //he 12-bit B-immediate encodes signedoffsets in multiples of 2 bytes.  Also 4 bytes equal to 1 instruction .
+
+
+        }
+        else{ pc++;}
+          break;
+        case 1:
+        //bne
+        printf("Instruction bne: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        if (registers[rs1] != registers[rs2])
+        {
+          //printf("%d\n",pc );
+          pc = pc + (imm/2); 
+          //printf("%d\n",pc );
+
+        }
+        else {pc++;}
+          break;
+        case 4:
+        //blt
+        printf("Instruction blt: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        if (registers[rs1] < registers[rs2])
+        {
+          pc = pc + (imm/2);
+        }
+        else
+          {pc++;}
+          break;
+        
+
+
+        case 5:
+        //bge
+        printf("Instruction bge: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        pc++;
+        if (registers[rs1] > registers[rs2])
+          {pc = pc +(imm/2);}
+        else {pc ++;}
+          break;
+        
+        case 6:
+        //bltu
+        printf("Instruction bltu: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        if (unsignedbintodec(registers[rs1]) < unsignedbintodec(registers[rs2]))
+        {
+          pc =pc + (imm/2);
+        }
+        else{ pc++;}
+        
+          break;
+        case 7:
+        //bgeu
+        printf("Instruction bltu: rs1:%u rs2: %u imm:%d\n\n", rs1,rs2,imm);
+        if ( unsignedbintodec(registers[rs1]) > unsignedbintodec(registers[rs2]))
+        {
+          pc = pc + (imm/2) ;
+        }
+        else{pc++;}
+          break;
+
+      }
+      
+      break;
 
     default:
       printf("Unknown instruction with opcode: %u\n", opcode);
       pc++;
   }
+
   return pc;
 }

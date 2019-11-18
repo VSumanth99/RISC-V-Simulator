@@ -17,6 +17,7 @@ int32_t sign_extend(int32_t num, int bits)
   return left_most == 0x01 ? ((0xffffffff<<bits) + num ) : num;
 }
 
+
 void r_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* rd, uint8_t* funct7, uint8_t* funct3)
 {
   *rs1 = (instruc >> 15) & 0x1f;
@@ -40,3 +41,15 @@ void u_type_extract(uint32_t instruc, uint8_t* rd, int32_t *imm)
   *imm = (instruc >> 12);
 
 }
+void b_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* funct3, int32_t*imm)
+{ *rs1 = (instruc>>15) & 0x1f;
+  *rs2 = (instruc>>20) & 0x1f;
+  *funct3 =(instruc>>12) &0x07;
+  //imm_12 = (((instruc>>31)&0x01)<<11);
+  //imm_11 = (((instruc>>7)&0x01)<<10);
+  //imm_10_5 =(((instruc>>25)&0x3f)<<4);
+  //imm_4_1 = ((instruc>>8)&0x0f);
+  //temp = imm_12 + imm_11 + imm_10_5 + imm_4_1;
+  *imm = sign_extend(((((instruc>>31)&0x01)<<11)+(((instruc>>7)&0x01)<<10)+(((instruc>>25)&0x3f)<<4)+((instruc>>8)&0x0f)),12);
+}
+
