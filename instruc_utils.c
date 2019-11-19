@@ -69,3 +69,19 @@ void jal_type_extract(uint32_t instruc,uint8_t* rd,int32_t* imm)
   //imm_10_1 = ((instruc>>21)&0x3ff)
   *imm = sign_extend(((((instruc>>31)&0x01)<<19)+(((instruc>>12)&0xff)<<11)+(((instruc>>20)&0x01)<<10)+((instruc>>21)&0x3ff)),20);
 }
+void load_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t* imm)
+{
+  *rd = (instruc >> 7) & 0x1f;
+  *funct3 = (instruc >> 12) & 0x07;
+  *rs1 = (instruc >> 15) & 0x1f;
+  *imm = sign_extend(instruc >> 20, 12);
+}
+void s_type_extract(uint32_t instruc, uint8_t* rs2, uint8_t* rs1, uint8_t* funct3, int32_t* imm)
+{
+  *rs2 = (instruc>>20)&0x1f;
+  *rs1 = (instruc>>15)&0x1f;
+  *funct3 = (instruc>>12)&0x07;
+  //uint32_t imm_11_5 = (((instruc>>25)&0x7f)>>5);
+  //uint32_t imm_4_0 = ((instruc>>7)&0x1f) ;
+  *imm = sign_extend(((((instruc>>25)&0x7f)<<5)+((instruc>>7)&0x1f)),12);
+}

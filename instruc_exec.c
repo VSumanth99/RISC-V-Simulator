@@ -14,7 +14,7 @@ uint32_t unsignedbintodec(int32_t n)
 }
 
 
-uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram, uint32_t pc)
+uint32_t process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram, uint32_t pc)
 {
   //extract the opcode from the instruction
   uint32_t opcode = instruc & 0x7f;
@@ -25,6 +25,7 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
     case 0x13:  //I type instruction
 
       i_type_extract(instruc, &rs1, &rd, &funct3, &imm);
+      printf("instruc : %u\n",instruc );
       printf("I-type instruction: rs1:%u rd:%u funct3:%u imm:%d\n\n", rs1, rd, funct3, imm);
       switch (funct3)
       {
@@ -36,6 +37,7 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
         //slli
 
           registers[rd] = (uint32_t)registers[rs1] << (uint32_t)(imm&0x1f);
+          printf("registers[rd] :%u\n",registers[rd]);
           break;
 
         case 2:
@@ -92,6 +94,7 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
           {
             //add
             registers[rd] = registers[rs1] + registers[rs2];
+            printf("registers[rs2] %u\n",registers[rs2] );
           }
           else if(funct7 == 32)
           {
@@ -227,21 +230,119 @@ uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram
       }
       
       break;
-    case 0x6f:
-      switch(funct3)
-      case 0:
-        jalr_type_extract(instruc, &rs1, &rd, &funct3, &imm);
-        printf("Instruction jalr: rs1:%u rd: %u imm:%d\n\n", rs1,rd,imm);
-        registers[rd] = pc +1;
-        pc = (registers[rs1] + imm)/4;
-        break;
     case 0x67:
+      {jalr_type_extract(instruc, &rs1, &rd, &funct3, &imm);
+      switch(funct3)
+        {case 0:
+          printf("instruc : %u\n",instruc );
+          printf("Instruction jalr: rs1:%u rd: %u imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = pc +1;
+          pc = ((registers[rs1] + imm)&0xfffffffe)/2;
+          break;}
+      break;}
+    case 0x6f:
 
-      jal_type_extract(instruc,&rd,&imm);
+      {jal_type_extract(instruc,&rd,&imm);
+      printf("instruc : %u\n",instruc );
       printf("Instruction jal: rd: %u imm:%d\n\n", rd,imm);
       registers[rd] = pc +1;
       pc = pc + (imm/2);
-      break;
+      break;}
+    case 0x03:
+      load_type_extract(instruc ,&rs1, &rd, &funct3, &imm);
+      printf("Instruc %u\n",instruc );
+      switch(funct3)
+        {case 0:
+        //lb
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lb: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = sign_extend((ram[registers[rs1] + imm])&0xff,8);
+          pc++;
+          break;
+        case 1:
+        //lh
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lh: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = sign_extend((ram[registers[rs1] + imm])&0xffff,16);
+          pc++;
+          break;
+        case 2:
+        //lw
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lw: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+
+          registers[rd] =ram[registers[rs1] + imm] ;
+          printf("registers[rd] %u\n",registers[rd] );
+          pc++;
+          break;
+        case 3:
+        //ld
+          pc++;
+          break;
+        case 4:
+        //lbu
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lbu: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = ram[registers[rs1] + imm]&0xff;
+          pc++;
+          break;
+        case 5:
+        //lhu
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lhu: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = ram[registers[rs1] + imm]&0xffff;
+          pc++;
+          break;
+        case 6:
+        //lwu
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction lwu: rs1: %u ,rd: %u ,imm:%d\n\n", rs1,rd,imm);
+          registers[rd] = ram[registers[rs1] + imm]&0xffffffff;
+          pc++;
+          break;
+        }
+        break;
+    case 0x23:
+      s_type_extract(instruc,&rs2,&rs1, &funct3, &imm);
+      printf("instruc : %u\n",instruc );
+      printf("funct3: %u\n",funct3 );
+      //printf("Instruction : rs1: %u ,rs2: %u ,imm:%d\n\n", rs1,rs2,imm);
+      switch(funct3)
+
+        {case 0:
+          //sb
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction sb: rs1: %u ,rs2: %u ,imm:%d\n\n", rs1,rs2,imm);
+          ram[registers[rs1] + imm] = registers[rs2]&0xff;
+          pc++;
+          break;
+        case 1:
+          //sh
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction sh: rs1: %u ,rs2: %u ,imm:%d\n\n", rs1,rs2,imm);
+
+          ram[registers[rs1] + imm] = registers[rs2]&0xffff;
+          pc++;
+          break;
+        
+        case 2:
+        //sw
+          //int32_t addrs = registers[rs1] + imm;
+          printf("Instruction sw: rs1: %u ,rs2: %u ,imm:%d\n\n", rs1,rs2,imm);
+          printf(" register[rs1] %u\n", registers[rs1] );
+          ram[registers[rs1] + imm] = registers[rs2]&0xffffffff;
+          pc++;
+          break;
+        case 3:
+        //sd
+         pc++;
+          break;}
+
+        break;
+
+
+
+
 
 
     default:

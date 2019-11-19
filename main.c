@@ -44,13 +44,24 @@ int main(int argc, char const *argv[])
     uint32_t pc = 0;
     int32_t registers[32];
 
+    int32_t *ram = NULL;
+    ram = (malloc(1024*1024*1024)); 
     //initialise registers to 0
     for (int i = 0; i < 32; i++)
       registers[i] = 0;
+    registers[2] = 1024*1024;
+    //initialize mem to zero
+     
+    for (int i = 0; i < 1024*1024*2; i++)
+      ram[i] = 0;
+    //int count =0;
     for (; ; )
     {		printf("%d\n",pc );
 			uint32_t instr = instructions[pc];
-			pc = process_instruction(instr, registers, NULL, pc);
+			pc = process_instruction(instr, registers, ram, pc);
+      //count = count +1;
+      //if (count>20)
+        //break;
 
       //test for program end
       if(pc > n_instructions)
