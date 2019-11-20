@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "instruc_utils.h"
 
-uint32_t process_instruction(uint32_t instruc, int32_t *registers, uint32_t *ram, uint32_t pc);
+int32_t* process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram, int32_t *pc);
 
 #endif

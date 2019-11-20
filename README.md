@@ -28,19 +28,20 @@ So far, has implemented the following instructions:
 ### U-type instructions
 1. `lui`
 
+### B-type instructions
+1. `beq`     
+2. `bne`     
+3. `blt`     
+4. `bge`     
+5. `bltu`    
+6. `bgeu`   
+7. `jalr`    
+8. `jal`   
+
 
 ### Remaining:
 
-`beq`     
-`bne`     
-`blt`     
-`bge`     
-`bltu`    
-`bgeu`    
-
-`jalr`    
-
-`jal`     
+   
 
 `auipc`   
 

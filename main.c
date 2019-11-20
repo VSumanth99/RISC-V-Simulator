@@ -7,6 +7,8 @@
 #include "instruc_exec.h"
 #define MAX_BUFFER_SIZE 1024*1024
 #define MAX_INSTRUCTIONS MAX_BUFFER_SIZE / 4
+//32 MB
+#define MEMORY_SIZE 32 * 1024 * 1024
 
 int main(int argc, char const *argv[])
 {
@@ -41,20 +43,36 @@ int main(int argc, char const *argv[])
 /***********************************************
 
 *************************************************/
-    uint32_t pc = 0;
+    int32_t *pc = 0;
     int32_t registers[32];
 
+
+    int32_t *ram = (int32_t*)(calloc(MEMORY_SIZE/4, 4));
     //initialise registers to 0
     for (int i = 0; i < 32; i++)
       registers[i] = 0;
+
+    //initialize stack pointer such that we have 1MB stack
+    registers[2] = (int32_t) (ram + (MEMORY_SIZE - 1024*1024)/4);
+
+    //copy the code to memory
+    for(int i = 0; i < n_instructions; i++)
+    {
+        ram[i] = instructions[i];
+    }
+
+    pc = ram;
+
     for (; ; )
     {
-			uint32_t instr = instructions[pc];
-			pc = process_instruction(instr, registers, NULL, pc);
-      //test for program end
-      if(pc > n_instructions)
-        break;
+      int32_t instr = *pc;
+			pc = process_instruction(instr, registers, ram, pc);
 
+      //test for program end
+      if(pc > ram+n_instructions)
+        break;
+      //print_registers(registers);
+      //getchar();
 	  }
     printf("\nPrinting register contents:\n" );
     print_registers(registers);
