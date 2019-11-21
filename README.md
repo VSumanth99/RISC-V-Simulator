@@ -62,16 +62,17 @@ Following are the environment calls supported
 | ID(a0) | Name | Description|
 |---|---|---|
 | 10 | exit | Ends the program |
+| 1 | print_int | print intergers in a1 |
+| 4 | print_string | prints the null-terminated string whose address is in a1 |
+| 11 | print_character | prints ASCII character in a1 |
+| 17 | exit2 | ends the program with return code in a1 |
 
-### Remaining Environment Calls
+### Unimplimented Environment Calls
 
 | ID(a0) | Name | Description|
 |---|---|---|
-| 1 | print_int | print intergers in a1 |
-| 4 | print_string | prints the null-terminated string whose address is in a1 |
 | 9 | sbrk | allocates a1 bytes on the heap, returns pointer to start in a0 |
-| 11 | print_character | prints ASCII character in a1 |
-| 17 | exit2 | ends the program with return code in a1 |
+
 
 ### Installation Dependencies
 

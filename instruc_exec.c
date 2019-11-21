@@ -348,6 +348,26 @@ int32_t* process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram,
             printf("Exiting the program...printing registers\n");
             print_registers(registers);
             exit(0);
+        case 1:
+            //print integer in a1
+            printf("Printing integer in a1: ");
+            printf("%d\n", registers[11] );
+            break;
+        case 4:
+        	// printing string whose adress is a1
+        	printf("Printing string whose adress a1: " );
+        	printf("%s\n",(char *)ram[registers[11]/4] );
+        	break;
+        case 11:
+        	//printing ascii character in a1
+        	printf("Printing ascii character in a1: ");
+        	printf("%c\n",(char)registers[11] );
+        	break;
+        case 17:
+        	//exit2
+            printf("Exiting the program...printing registers\n");
+            print_registers(registers);
+            exit(registers[11]);
         }
     default:
         printf("Unknown instruction with opcode: %u\n", opcode);
