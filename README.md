@@ -27,6 +27,7 @@ So far, has implemented the following instructions:
 
 ### U-type instructions
 1. `lui`
+2. `auipc`   
 
 ### B-type instructions
 1. `beq`     
@@ -38,13 +39,7 @@ So far, has implemented the following instructions:
 7. `jalr`    
 8. `jal`   
 
-
-### Remaining:
-
-   
-
-`auipc`   
-
+### Store Instructions
 `lb`      
 `lh`      
 `lw`      
@@ -57,6 +52,36 @@ So far, has implemented the following instructions:
 `sh`     
 `sw`     
 `sd`     
+
+### Environment calls
+To use an environmental call, load the ID into register a0, and load any arguments into a1 - a7. 
+Any return values will be stored in argument registers.
+
+Following are the environment calls supported
+
+| ID(a0) | Name | Description|
+|---|---|---|
+| 10 | exit | Ends the program |
+
+### Remaining Environment Calls
+
+| ID(a0) | Name | Description|
+|---|---|---|
+| 1 | print_int | print intergers in a1 |
+| 4 | print_string | prints the null-terminated string whose address is in a1 |
+| 9 | sbrk | allocates a1 bytes on the heap, returns pointer to start in a0 |
+| 11 | print_character | prints ASCII character in a1 |
+| 17 | exit2 | ends the program with return code in a1 |
+
+### Installation Dependencies
+
+Note that we have compiled the simulator to work as a 32-bit binary. The appropriate version of `gcc` needs to be installed. On ubuntu 18.04 this corresponds to installing the package `gcc-multilib`, using the command `sudo apt-get install gcc-multilib`
+
+### Note on Stack pointer
+
+We have initialized 32MB of ram for the program. 
+We have initialized stack pointer 1MB from the top of ram.
+We copied program instructions to bottom of the ram.
 
 Opcodes found here:
 https://github.com/riscv/riscv-opcodes/blob/master/opcodes

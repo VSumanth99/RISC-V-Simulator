@@ -7,4 +7,4 @@ all:
 	$(CC) $(SRC_FILES) $(CFLAGS) -o $(EXEC)
 
 clean:
-	rm $(EXEC)
+	rm $(EXEC) dump.res
