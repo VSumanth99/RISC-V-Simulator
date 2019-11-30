@@ -67,7 +67,7 @@ Following are the environment calls supported
 | 11 | print_character | prints ASCII character in a1 |
 | 17 | exit2 | ends the program with return code in a1 |
 
-### Unimplimented Environment Calls
+### Unimplemented Environment Calls
 
 | ID(a0) | Name | Description|
 |---|---|---|
