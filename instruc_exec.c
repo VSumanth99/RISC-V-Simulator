@@ -243,7 +243,7 @@ int32_t* process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram,
         case 0:
             ;
             if(rd!=0)
-                registers[rd] = (int32_t)(pc + 1); //storing pointer value in register
+                registers[rd] = (int32_t)(pc -ram + 1); //storing pointer value in register
             pc = ram + ((registers[rs1] + imm)&0xfffffffe)/4;
             break;
         }
