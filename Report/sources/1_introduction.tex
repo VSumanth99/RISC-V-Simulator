@@ -124,6 +124,626 @@ In the simulator we allocated a total space of 32MB RAM for the microprocessor. 
 \newline To build the simulator, the \texttt{gcc-multilib} library is required, since the simulator is run as a 32-bit binary. Once the libary is installed, run \texttt{make}.\\
 To run a binary file, type \texttt{./risc-simul <binary file>}\\
 Any outputs, as well as the final register states are printed. A binary dump of the final register contents are also stored in \texttt{dump.res}
+\newpage
+\section{Appendix: Source code}
+\subsection{main.c:}
+\begin{lstlisting}[language=C]
+#include <stdio.h>
+
+//for fixed size data types
+#include <stdint.h>
+#include <stdlib.h>
+#include "instruc_utils.h"
+#include "instruc_exec.h"
+#define MAX_BUFFER_SIZE 1024*1024
+#define MAX_INSTRUCTIONS MAX_BUFFER_SIZE / 4
+//32 MB
+#define MEMORY_SIZE 32 * 1024 * 1024
+
+int main(int argc, char const *argv[])
+{
+    uint32_t *instructions = NULL;
+    int n_instructions=0;
+
+    if(argc != 2)
+    {
+        printf("ERROR: Improper usage.\n");
+        printf("Syntax: riscsimul <program name>\n");
+        return -1;
+    }
+    else
+    {
+        //open the file
+        FILE *fb;
+        fb = fopen(argv[1], "rb");
+        if(fb==NULL)
+        {
+            printf("ERROR: Could not open file %s\n", argv[1]);
+            return -2;
+        }
+        //read all the instructions
+        instructions = malloc(MAX_BUFFER_SIZE);
+        while(fread(&instructions[n_instructions++], 4, 1, fb) == 1)
+        {
+            //do nothing
+        }
+        n_instructions -= 1;
+    }
+
+    int32_t *pc = 0;
+    int32_t registers[32];
+
+
+    int32_t *ram = (int32_t*)(calloc(MEMORY_SIZE/4, 4));
+    //initialise registers to 0
+    for (int i = 0; i < 32; i++)
+        registers[i] = 0;
+
+    //initialize stack pointer such that we have 1MB stack
+    registers[2] = (int32_t) (ram + (MEMORY_SIZE - 1024*1024)/4);
+
+    //copy the code to memory
+    for(int i = 0; i < n_instructions; i++)
+    {
+        ram[i] = instructions[i];
+    }
+    free(instructions);
+
+    pc = ram;
+
+    for (; ; )
+    {
+        int32_t instr = *pc;
+        //printf("%s\n", );
+        pc = process_instruction(instr, registers, ram, pc);
+
+        //test for program end
+        if(pc > ram+n_instructions)
+            break;
+        //print_registers(registers);
+        //getchar();
+    }
+    printf("\nPrinting register contents:\n" );
+    print_registers(registers);
+    free(ram);
+    return 0;
+}
+
+
+\end{lstlisting}
+\subsection{instruc\_utils.c}
+\begin{lstlisting}[language=C]
+
+#include "instruc_utils.h"
+#include <stdio.h>
+
+
+void print_registers(int32_t *registers)
+{
+    FILE *write_ptr;
+    for(int i = 0; i < 32; i++)
+    {
+        printf("x%d:\t\t%d\n", i, registers[i]);
+    }
+    write_ptr = fopen("dump.res","wb");  // w for write, b for binary
+    fwrite(registers, 4*32, 1, write_ptr);
+
+}
+
+int32_t sign_extend(int32_t num, int bits)
+{
+    uint32_t left_most = num >> (bits-1);
+    return left_most == 0x01 ? ((0xffffffff<<bits) + num ) : num;
+}
+
+
+void r_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* rd, uint8_t* funct7, uint8_t* funct3)
+{
+    rs1 = (instruc >> 15) & 0x1f;
+    rs2 = (instruc >> 20) & 0x1f;
+    rd = (instruc >> 7) & 0x1f;
+    funct7 = (instruc >> 25) & 0x7f;
+    funct3 = (instruc >> 12) & 0x07;
+    opcode = instruc&0x7f;
+}
+
+void i_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t *imm)
+{
+    *rd = (instruc >> 7) & 0x1f;
+    *funct3 = (instruc >> 12) & 0x07;
+    *rs1 = (instruc >> 15) & 0x1f;
+    *imm = sign_extend(instruc >> 20, 12);
+}
+
+void u_type_extract(uint32_t instruc, uint8_t* rd, int32_t *imm)
+{
+    *rd = (instruc>>7) & 0x1f;
+    *imm = (instruc >> 12);
+}
+
+void b_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* funct3, int32_t*imm)
+{
+    *rs1 = (instruc>>15) & 0x1f;
+    *rs2 = (instruc>>20) & 0x1f;
+    *funct3 =(instruc>>12) &0x07;
+    int32_t imm_12 = (((instruc>>31)&0x01)<<11);
+    int32_t imm_11 = (((instruc>>7)&0x01)<<10);
+    int32_t imm_10_5 =(((instruc>>25)&0x3f)<<4);
+    int32_t imm_4_1 = ((instruc>>8)&0x0f);
+    *imm = sign_extend(imm_12+imm_11+imm_10_5+imm_4_1,12);
+}
+
+void jalr_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t *imm)
+{
+    *rd = (instruc >> 7) & 0x1f;
+    *funct3 = (instruc >> 12) & 0x07;
+    *rs1 = (instruc >> 15) & 0x1f;
+    *imm = sign_extend(instruc >> 20, 12);
+}
+
+void j_type_extract(uint32_t instruc,uint8_t* rd,int32_t* imm)
+{
+    *rd = (instruc >> 7) & 0x1f;
+    int32_t imm_20 = (((instruc>>31)&0x01)<<19);
+    int32_t imm_19_12 = (((instruc>>12)&0xff)<<11);
+    int32_t imm_11 = (((instruc>>20)&0x01)<<10);
+    int32_t imm_10_1 = ((instruc>>21)&0x3ff);
+    *imm = sign_extend(imm_20 + imm_19_12 + imm_11 + imm_10_1, 20);
+}
+
+void load_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t* imm)
+{
+    *rd = (instruc >> 7) & 0x1f;
+    *funct3 = (instruc >> 12) & 0x07;
+    *rs1 = (instruc >> 15) & 0x1f;
+    *imm = sign_extend(instruc >> 20, 12);
+}
+
+void s_type_extract(uint32_t instruc, uint8_t* rs2, uint8_t* rs1, uint8_t* funct3, int32_t* imm)
+{
+    *rs2 = (instruc>>20)&0x1f;
+    *rs1 = (instruc>>15)&0x1f;
+    *funct3 = (instruc>>12)&0x07;
+    int32_t imm_11_5 = (((instruc>>25)&0x7f)<<5);
+    int32_t imm_4_0 = ((instruc>>7)&0x1f) ;
+    *imm = sign_extend(imm_11_5 + imm_4_0, 12);
+}
+
+\end{lstlisting}
+\subsection{instruc\_utils.h}
+\begin{lstlisting}[language=C]
+#ifndef INSTRUC_UTILS
+#define INSTRUC_UTILS
+
+#include <stdint.h>
+
+void print_registers(int32_t *registers);
+void r_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* rd, uint8_t* funct7, uint8_t* funct3);
+void i_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t *imm);
+void u_type_extract(uint32_t instruc, uint8_t* rd, int32_t *imm);
+void b_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rs2, uint8_t* funct3, int32_t*imm);
+int32_t sign_extend(int32_t num, int bits);
+void j_type_extract(uint32_t instruc,uint8_t* rd,int32_t* imm);
+void load_type_extract(uint32_t instruc, uint8_t* rs1, uint8_t* rd, uint8_t* funct3, int32_t *imm);
+void s_type_extract(uint32_t instruc, uint8_t* rs2, uint8_t* rs1, uint8_t* funct3, int32_t* imm);
+
+#endif
+
+\end{lstlisting}
+
+\subsection{instruc\_exec.c}
+\begin{lstlisting}[language=C]
+#include "instruc_exec.h"
+#include "instruc_utils.h"
+
+int32_t* process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram, int32_t *pc)
+{
+    //extract the opcode from the instruction
+    uint32_t opcode = instruc & 0x7f;
+    uint8_t rs1, rs2, rd, funct3, funct7;
+    int32_t imm;
+    switch (opcode)
+    {
+    case 0x13:  //I type instruction
+
+        i_type_extract(instruc, &rs1, &rd, &funct3, &imm);
+        switch (funct3)
+        {
+        case 0:
+            //addi
+            registers[rd] = registers[rs1] + imm;
+            break;
+        case 1:
+            //slli
+
+            registers[rd] = (uint32_t)registers[rs1] << (uint32_t)(imm&0x1f);
+
+            break;
+
+        case 2:
+            //slti
+            registers[rd] = registers[rs1] < imm;
+            break;
+
+        case 3:
+            //sltiu
+            registers[rd] = (uint32_t)registers[rs1] < (uint32_t)imm;
+            break;
+
+        case 4:
+            //xori
+            registers[rd] = registers[rs1] ^ imm;
+            break;
+
+        case 5:
+            //srli/srai
+
+            if((imm>>5) == 0)
+            {
+                //srli
+                registers[rd] = (uint32_t)registers[rs1] >> (uint32_t)(imm & 0x1f);
+            }
+            else if((imm>>5) == 32)
+            {
+                //srai
+                registers[rd] = registers[rs1] >> (imm & 0x1f);
+            }
+            break;
+
+        case 6:
+            //ori
+            registers[rd] = registers[rs1] | imm;
+            break;
+
+        case 7:
+            //andi
+            registers[rd] = registers[rs1] & imm;
+            break;
+        }
+        pc++;
+        break;
+
+    case 0x33: ; //R type instruction
+        r_type_extract(instruc, &rs1, &rs2, &rd, &funct7, &funct3);
+
+
+        switch (funct3)
+        {
+        case 0:
+            //add or sub
+            if(funct7 == 0)
+            {
+                //add
+                registers[rd] = registers[rs1] + registers[rs2];
+                ;
+            }
+            else if(funct7 == 32)
+            {
+                //subtract
+                registers[rd] = registers[rs1] - registers[rs2];
+            }
+            break;
+
+        case 1:
+            //sll
+            //get lower 5 bits of registers[rs2]
+            registers[rd] = (uint32_t)registers[rs1] << (uint32_t)(registers[rs2] & 0x1f);
+            break;
+
+        case 2:
+            //slt
+            registers[rd] = registers[rs1] < registers[rs2];
+            break;
+
+        case 3:
+            //sltu
+            registers[rd] = (uint32_t)registers[rs1] < (uint32_t)registers[rs2];
+            break;
+
+        case 4:
+            //xor
+            registers[rd] = registers[rs1] ^ registers[rs2];
+            break;
+
+        case 5:
+            //srl or sra
+            if(funct7 == 0)
+            {
+                //srl
+                registers[rd] = (uint32_t)registers[rs1] >> (uint32_t)(registers[rs2]& 0x1f);
+            }
+            else if(funct7 == 32)
+            {
+                //sra
+                registers[rd] = registers[rs1] >> (registers[rs2]& 0x1f);
+            }
+            break;
+
+        case 6:
+            //or
+            registers[rd] = registers[rs1] | registers[rs2];
+            break;
+
+        case 7:
+            //and
+            registers[rd] = registers[rs1] & registers[rs2];
+            break;
+        }
+        pc++;
+        break;
+
+    case 0x17:
+        ;
+        //auipc
+        u_type_extract(instruc, &rd, &imm);
+        if(rd!=0)
+            registers[rd] = (pc-ram)*4 + (imm << 12);
+
+        pc++;
+        break;
+
+    case 0x37:
+        ;
+        //lui
+        u_type_extract(instruc, &rd, &imm);
+
+        registers[rd] = imm << 12;
+
+        pc++;
+        break;
+
+    case 0x63:
+        ;
+        b_type_extract(instruc, &rs1, &rs2, &funct3, &imm);
+        switch(funct3)
+        {
+        case 0:
+            ;
+            //beq
+
+            if (registers[rs1] == registers[rs2])
+            {
+                pc = pc + (imm/2);
+                //The 12-bit B-immediate encodes signed offsets in multiples of 2 bytes.
+                //Also 4 bytes equal to 1 instruction .
+            }
+            else
+                pc++;
+            break;
+        case 1:
+            ;
+            //bne
+
+            if (registers[rs1] != registers[rs2])
+            {
+                pc = pc + (imm/2);
+            }
+            else {
+                pc++;
+            }
+            break;
+        case 4:
+            ;
+            //blt
+
+            if (registers[rs1] < registers[rs2])
+            {
+                pc = pc + (imm/2);
+            }
+            else
+            {
+                pc++;
+            }
+            break;
+
+        case 5:
+            ;
+            //bge
+
+            if (registers[rs1] > registers[rs2])
+                pc = pc +(imm/2);
+            else
+                pc ++;
+            break;
+
+        case 6:
+            ;
+            //bltu
+            if ((uint32_t)(registers[rs1]) < (uint32_t)(registers[rs2]))
+            {
+                pc =  pc + (imm/2);
+            }
+            else
+                pc++;
+
+            break;
+
+        case 7:
+            ;
+            //bgeu
+            if ( (uint32_t)(registers[rs1]) > (uint32_t)(registers[rs2]))
+                pc = pc + (imm/2) ;
+
+            else
+                pc++;
+            break;
+        }
+        break;
+
+    case 0x67:
+    {   //jalr
+        i_type_extract(instruc, &rs1, &rd, &funct3, &imm);
+        switch(funct3)
+        {
+        case 0:
+            ;
+            if(rd!=0)
+                registers[rd] = (int32_t)(pc -ram + 1); //storing pointer value in register
+            pc = ram + ((registers[rs1] + imm)&0xfffffffe)/4;
+            break;
+        }
+        break;
+    }
+
+    case 0x6f:
+    {   //jal (J type instruction)
+        j_type_extract(instruc,&rd,&imm);
+        if(rd!=0)
+            registers[rd] = (int32_t)(pc - ram + 1) * 4; //storing pointer value in register
+        pc = pc + (imm/2);
+        break;
+    }
+
+    case 0x03:
+        load_type_extract(instruc,&rs1, &rd, &funct3, &imm);
+        switch(funct3)
+        {
+        case 0:
+            //lb
+            registers[rd] = sign_extend((ram[(registers[rs1] + imm)/4])&0xff, 8);
+            pc++;
+            break;
+
+        case 1:
+            //lh
+            registers[rd] = sign_extend((ram[(registers[rs1] + imm)/4])&0xffff, 16);
+            pc++;
+            break;
+
+        case 2:
+            //lw
+
+
+            registers[rd] = ram[(registers[rs1] + imm)/4] ;
+
+            pc++;
+            break;
+
+        case 3:
+            //ld
+            printf("ERROR: Trying to use ld instruction in 32-bit system\n");
+            pc++;
+            break;
+
+        case 4:
+            //lbu
+            registers[rd] = ram[(registers[rs1] + imm)/4]&0xff;
+            pc++;
+            break;
+
+        case 5:
+            //lhu
+            registers[rd] = ram[(registers[rs1] + imm)/4] & 0xffff;
+            pc++;
+            break;
+
+        case 6:
+            //lwu
+            registers[rd] = ram[(registers[rs1] + imm)/4] & 0xffffffff;
+            pc++;
+            break;
+        }
+        break;
+
+    case 0x23:
+        s_type_extract(instruc, &rs2, &rs1, &funct3, &imm);
+
+        switch(funct3)
+        {
+        case 0:
+            //sb
+            ram[(registers[rs1] + imm)/4] = registers[rs2]&0xff;
+            pc++;
+            break;
+        case 1:
+            //sh
+            ram[(registers[rs1] + imm)/4] = registers[rs2]&0xffff;
+            pc++;
+            break;
+
+        case 2:
+            //sw
+            ram[(registers[rs1] + imm)/4] = registers[rs2]&0xffffffff;
+            pc++;
+            break;
+
+        case 3:
+            //sd
+            printf("ERROR: Trying to use 64bit instruction sd in 32-bit simulator\n");
+            pc++;
+            break;
+        }
+        break;
+
+    case 0x73: ;//ecall
+        switch (registers[10])
+        {
+        case 10:
+            //print registers
+            printf("Exiting the program...printing registers\n");
+            print_registers(registers);
+            exit(0);
+        case 1:
+            //print integer in a1
+            printf("Printing integer in a1: ");
+            printf("%d\n", registers[11] );
+            break;
+        case 4:
+        	// printing string whose adress is a1
+        	printf("Printing string whose adress a1: " );
+        	printf("%s\n",(char *)ram[registers[11]/4] );
+        	break;
+        case 11:
+        	//printing ascii character in a1
+        	printf("Printing ascii character in a1: ");
+        	printf("%c\n",(char)registers[11] );
+        	break;
+        case 17:
+        	//exit2
+            printf("Exiting the program...printing registers\n");
+            print_registers(registers);
+            exit(registers[11]);
+        }
+    default:
+        printf("Unknown instruction with opcode: %u\n", opcode);
+        pc++;
+    }
+
+    return pc;
+}
+
+\end{lstlisting}
+
+\subsection{instruc\_exec.h}
+\begin{lstlisting}[language=C]
+#ifndef INSTRUC_EXEC
+#define INSTRUC_EXEC
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "instruc_utils.h"
+
+int32_t* process_instruction(uint32_t instruc, int32_t *registers, int32_t *ram, int32_t *pc);
+
+#endif
+
+\end{lstlisting}
+\subsection{Makefile}
+\begin{lstlisting}[language=make]
+CC = gcc
+CFLAGS = -std=c99 -m32 -g
+SRC_FILES = main.c instruc_utils.c instruc_exec.c
+EXEC = riscsimul
+
+all:
+	$(CC) $(SRC_FILES) $(CFLAGS) -o $(EXEC)
+
+clean:
+	rm $(EXEC) dump.res
+
+\end{lstlisting}
+
 
 
 
